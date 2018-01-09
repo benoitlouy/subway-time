@@ -27,7 +27,7 @@ setup(
 
         entry_points = {
             "console_scripts": [
-                "subway-time=subway_time:main"
+                "subway-time=subway_time.__main__:main"
             ]
         }
 )

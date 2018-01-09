@@ -3,4 +3,4 @@ dist/
 .*.swp
 *.egg-info/
 *.py[co]
-virtualenv
+venv

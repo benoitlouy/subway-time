@@ -1,0 +1,7 @@
+{
+  "mta" : {
+    "feed_ids": [1, 31], // different lines are on different feeds, the ids for each line are listed at http://datamine.mta.info/list-of-feeds
+    "api_key": "abcdefg", // obtain an API key by registering at http://datamine.mta.info/user/register
+    "stop_ids": ["G34N", "109N"] // use the stop ids listed here https://github.com/benoitlouy/subway-time/blob/master/subway_time/stops.csv, use the ids with a direction (eg. G34N and not G34)
+  }
+}

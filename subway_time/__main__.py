@@ -10,6 +10,7 @@ import csv
 import json
 import argparse
 import os
+import sys
 
 def get_direction(ext):
     return {ext.NORTH: "North",
@@ -35,7 +36,7 @@ class Config:
         self.api_key = config["mta"]["api_key"]
         self.stop_ids = config["mta"]["stop_ids"]
 
-def run():
+def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--config", "-c", required = True)
     args = arg_parser.parse_args()
@@ -85,4 +86,5 @@ def run():
 
     image.save("out.ppm", "PPM")
 
-
+if __name__ == "__main__":
+    sys.exit(main())
