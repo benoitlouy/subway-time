@@ -8,6 +8,7 @@ import math
 import copy
 import time
 import threading
+import functools
 
 
 class MTASubwayFetcher:
@@ -56,9 +57,16 @@ class MTASubwayFetcher:
 
         self.data = stop_info
 
+    def access(self, stop_id):
+        return self.data[stop_id]
+
+    def get(self, stop_id):
+        return functools.partial(self.access, stop_id)
+
     @staticmethod
     def get_direction(ext):
         return {ext.NORTH: "North",
                 ext.EAST: "East",
                 ext.SOUTH: "South",
                 ext.WEST: "West"}[ext.direction]
+
