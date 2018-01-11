@@ -3,7 +3,7 @@ import csv
 import datetime
 from google.transit import gtfs_realtime_pb2
 import requests
-from subway_time.nyct_subway_pb2 import *
+from .nyct_subway_pb2 import *
 import math
 import copy
 import time
@@ -11,7 +11,7 @@ import threading
 import functools
 
 
-class MTASubwayFetcher:
+class Fetcher:
     def __init__(self, api_key, feed_ids, stop_ids):
         self.api_key = api_key
         self.feed_ids = feed_ids
@@ -45,7 +45,7 @@ class MTASubwayFetcher:
                         if update.stop_id in self.stop_ids:
                             stop_info[update.stop_id]["line"] = entity.trip_update.trip.route_id
                             nyct_extension = entity.trip_update.trip.Extensions[nyct_trip_descriptor]
-                            stop_info[update.stop_id]["direction"] = MTASubwayFetcher.get_direction(nyct_extension)
+                            stop_info[update.stop_id]["direction"] = self.get_direction(nyct_extension)
                             train_time = update.arrival.time
                             if train_time <= 0:
                                 train_time = update.departure.time

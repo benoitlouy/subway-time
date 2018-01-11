@@ -2,11 +2,13 @@ import time
 import argparse
 import sys
 import json
-from subway_time.mta_subway_fetcher import MTASubwayFetcher
+from subway_time.data_provider import mta
 from subway_time.utils import get_resource
-from PIL import ImageFont
+from subway_time.display import sdl
+from PIL import Image, ImageDraw, ImageFont
 import math
 from subway_time.tile import Tile
+
 
 class Config:
     def __init__(self, path):
@@ -18,25 +20,42 @@ class Config:
         self.stop_ids = config["mta"]["stop_ids"]
 
 
+def get_image(tiles, width, height):
+    image = Image.new("RGB", (width, height))
+    draw = ImageDraw.Draw(image)
+    for tile in tiles:
+        if tile.x < width:
+            tile.draw(draw)
+    return image
+
+
+displays = {
+    "sdl": sdl.Display
+}
+
+
 def main():
-    fps = 1
+    fps = 10
     max_predictions = 3
     width = 64
     height = 32
     stop_name_template = "%(line)s %(name)s %(direction)s"
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--config", "-c", required = True)
+    arg_parser.add_argument("--config", "-c", required=True)
+    arg_parser.add_argument("--display", "-d", default="sdl")
     args = arg_parser.parse_args()
 
     config = Config(args.config)
 
-    fetcher = MTASubwayFetcher(config.api_key, config.feed_ids, config.stop_ids)
+    fetcher = mta.Fetcher(config.api_key, config.feed_ids, config.stop_ids)
 
     font_path = get_resource("helvR08.pil")
     font = ImageFont.load(font_path)
+    font_y_offset = -2
 
-    # compute tile width
+    display = displays[args.display](width, height)
+
     tile_width = font.getsize("88 min" * max_predictions + ", " * (max_predictions - 1))[0]
 
     w = font.getsize('No Predictions')[0]
@@ -60,24 +79,31 @@ def main():
     else:
         tiles_across = int(math.ceil(width / tile_width)) + 1
 
-    tile_list = []
+    tiles = []
     next_prediction = 0  # Index of predictList item to attach to tile
     for x in range(tiles_across):
-        for y in range(0, 2):
-            tile_list.append(Tile(x * tile_width + y * tile_width / 2, y * 17, getters[next_prediction]))
-            next_prediction += 1
-            if next_prediction >= len(getters):
-                next_prediction = 0
+        for y in range(0, height // 16):
+            tiles.append(Tile(x * tile_width + y * tile_width / 2, y * 17, getters[next_prediction], font, font_y_offset))
+            next_prediction = (next_prediction + 1) % len(getters)
 
-    print(tile_list)
+    current_time = time.time()
 
-    previous_time = time.time()
     while True:
+        previous_time = current_time
+        image = get_image(tiles, width, height)
+        display.refresh(image)
+
+        for tile in tiles:
+            tile.x -= 1  # move tile to the left
+            if tile.x <= -tile_width:  # is tile off the left ledge
+                tile.x += tile_width * tiles_across  # move the tile back to right
+                tile.getter = getters[next_prediction]  # assign next prediction to the tile
+                next_prediction = (next_prediction + 1) % len(getters)  # cycle to the next prediction
+
         current_time = time.time()
         time_delta = (1.0 / fps) - (current_time - previous_time)
         if time_delta > 0.0:
             time.sleep(time_delta)
-        previous_time = current_time
 
 
 if __name__ == "__main__":
