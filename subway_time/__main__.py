@@ -35,6 +35,7 @@ displays = {
 
 
 def main():
+    scale = 8
     fps = 10
     max_predictions = 3
     width = 64
@@ -54,7 +55,7 @@ def main():
     font = ImageFont.load(font_path)
     font_y_offset = -2
 
-    display = displays[args.display](width, height)
+    display = displays[args.display](width * scale , height * scale)
 
     tile_width = font.getsize("88 min" * max_predictions + ", " * (max_predictions - 1))[0]
 
@@ -90,7 +91,8 @@ def main():
 
     while True:
         previous_time = current_time
-        image = get_image(tiles, width, height)
+        image = get_image(tiles, width, height).resize((width * scale, height * scale))
+        
         display.refresh(image)
 
         for tile in tiles:
