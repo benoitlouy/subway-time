@@ -35,12 +35,12 @@ displays = {
 
 
 def main():
-    scale = 8
+    scale = 1
     fps = 10
     max_predictions = 3
     width = 64
-    height = 32
-    stop_name_template = "%(line)s %(name)s %(direction)s"
+    height = 16
+    stop_name_template = "#FFFFFF{%(line)s %(name)s }#6E6E6E{%(direction)s}"
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--config", "-c", required=True)
@@ -49,7 +49,8 @@ def main():
 
     config = Config(args.config)
 
-    fetcher = mta.Fetcher(config.api_key, config.feed_ids, config.stop_ids)
+    fetcher = mta.Fetcher(config.api_key, config.feed_ids, config.stop_ids, stop_name_template,
+                          {5: "#FF0000", 10: "#FFFF00", 100000: "#00FF00"})
 
     font_path = get_resource("helvR08.pil")
     font = ImageFont.load(font_path)
@@ -67,8 +68,8 @@ def main():
     for stop_id in fetcher.data:
         getters.append(fetcher.get(stop_id))
 
-    for getter in getters:
-        label = stop_name_template % getter()
+    for stop_id in fetcher.data:
+        label = fetcher.max_width_text(stop_id)
         w = font.getsize(label)[0]
         if w > tile_width:
             tile_width = w
@@ -97,7 +98,8 @@ def main():
 
         for tile in tiles:
             tile.x -= 1  # move tile to the left
-            if tile.x <= -tile_width:  # is tile off the left ledge
+            # if tile.x <= -tile_width:  # is tile off the left ledge
+            if tile.x + tile.width <= 0:
                 tile.x += tile_width * tiles_across  # move the tile back to right
                 tile.getter = getters[next_prediction]  # assign next prediction to the tile
                 next_prediction = (next_prediction + 1) % len(getters)  # cycle to the next prediction

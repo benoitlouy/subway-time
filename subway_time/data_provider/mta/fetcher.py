@@ -1,4 +1,5 @@
-from subway_time.utils import get_resource
+from subway_time.utils import get_resource, minutes_to_text
+from subway_time.color_string import ColorString
 import csv
 import datetime
 from google.transit import gtfs_realtime_pb2
@@ -9,13 +10,20 @@ import copy
 import time
 import threading
 import functools
+import collections
 
 
 class Fetcher:
-    def __init__(self, api_key, feed_ids, stop_ids):
+    def __init__(self, api_key, feed_ids, stop_ids, stop_name_template, time_colors, time_separator="#6E6E6E{, }",
+                 max_pred=3, no_pred="#0000FF{No Predictions}"):
         self.api_key = api_key
         self.feed_ids = feed_ids
         self.stop_ids = stop_ids
+        self.stop_name_template = stop_name_template
+        self.time_templates = collections.OrderedDict(sorted([(t, color + "{%s}") for (t, color) in time_colors.items()]))
+        self.time_separator = time_separator
+        self.max_pred = max_pred
+        self.no_pred = no_pred
         self.init_data = {}
         with open(get_resource("stops.csv"), "r") as csv_file:
             reader = csv.DictReader(csv_file)
@@ -58,10 +66,32 @@ class Fetcher:
         self.data = stop_info
 
     def access(self, stop_id):
-        return self.data[stop_id]
+        stop_data = self.data[stop_id]
+        times = []
+        if not stop_data["next_train_times"]:
+            times.append(self.no_pred)
+        else:
+            for next_train in stop_data["next_train_times"]:
+                for t, tmpl in self.time_templates.items():
+                    if next_train <= t:
+                        times.append(tmpl % minutes_to_text(next_train))
+                        break
+                if len(times) == self.max_pred:
+                    break
+
+        return [ColorString(self.stop_name_template % self.data[stop_id]),
+                ColorString(self.time_separator.join(times))]
 
     def get(self, stop_id):
         return functools.partial(self.access, stop_id)
+
+    def max_width_text(self, stop_id):
+        label = str(ColorString(self.stop_name_template % self.data[stop_id]))
+        data = str(ColorString(self.time_separator)).join(["%02d min" % x for x in [0] * self.max_pred])
+        if len(label) > len(data):
+            return label
+        else:
+            return data
 
     @staticmethod
     def get_direction(ext):
