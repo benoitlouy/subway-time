@@ -14,13 +14,13 @@ import collections
 
 
 class Fetcher:
-    def __init__(self, api_key, feed_ids, stop_ids, stop_name_template, time_colors, time_separator="#6E6E6E{, }",
+    def __init__(self, api_key, feed_ids, stop_ids, label_template, time_colors, time_separator="#6E6E6E{, }",
                  max_pred=3, no_pred="#0000FF{No Predictions}"):
         self.api_key = api_key
         self.feed_ids = feed_ids
         self.stop_ids = stop_ids
-        self.stop_name_template = stop_name_template
-        self.time_templates = collections.OrderedDict(sorted([(t, color + "{%s}") for (t, color) in time_colors.items()]))
+        self.stop_name_template = label_template
+        self.time_templates = collections.OrderedDict(sorted([(int(t), color + "{%s}") for (t, color) in time_colors.items()]))
         self.time_separator = time_separator
         self.max_pred = max_pred
         self.no_pred = no_pred
@@ -82,8 +82,8 @@ class Fetcher:
         return [ColorString(self.stop_name_template % self.data[stop_id]),
                 ColorString(self.time_separator.join(times))]
 
-    def get(self, stop_id):
-        return functools.partial(self.access, stop_id)
+    def get(self):
+        return [functools.partial(self.access, stop_id) for stop_id in self.stop_ids]
 
     @staticmethod
     def get_direction(ext):

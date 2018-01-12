@@ -2,21 +2,11 @@ import time
 import argparse
 import sys
 import json
-from subway_time.data_provider import mta
 from subway_time.utils import get_resource
-from subway_time.display import sdl
 from PIL import Image, ImageDraw, ImageFont
 from subway_time.tile import Tile
-
-
-class Config:
-    def __init__(self, path):
-        with open(path, 'r') as config_file:
-            config = json.load(config_file)
-
-        self.feed_ids = config["mta"]["feed_ids"]
-        self.api_key = config["mta"]["api_key"]
-        self.stop_ids = config["mta"]["stop_ids"]
+import importlib
+from itertools import groupby
 
 
 def get_image(tiles, width, height):
@@ -24,69 +14,87 @@ def get_image(tiles, width, height):
     draw = ImageDraw.Draw(image)
     for row in tiles:
         for tile in row:
-            if tile.x + tile.width >= 0:
+            if tile.x + tile.width >= 0 and tile.y < height:
                 tile.draw(draw)
     return image
 
 
-displays = {
-    "sdl": sdl.Display
-}
+def load_fetchers(config):
+    fetchers = [(fetcher_config["row"], importlib.import_module(fetcher_config["module"]).Fetcher(**fetcher_config["config"]))
+                for fetcher_id, fetcher_config in config["fetchers"].items()]
+    return groupby(fetchers, lambda x: x[0])
+
+
+def load_displays(config):
+    displays = {}
+    for display_id, display_config in config["displays"].items():
+        displays[display_id] = importlib.import_module(display_config["module"]).Display(**display_config["config"])
+    return displays
 
 
 def main():
-    scale = 1
     fps = 10
-    width = 512
+    width = 64
     height = 32
-    stop_name_template = "#FFFFFF{%(line)s %(name)s }#6E6E6E{%(direction)s}"
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--config", "-c", required=True)
     arg_parser.add_argument("--display", "-d", default="sdl")
     args = arg_parser.parse_args()
 
-    config = Config(args.config)
+    with open(args.config, 'r') as config_file:
+        config = json.load(config_file)
 
-    fetcher = mta.Fetcher(config.api_key, config.feed_ids, config.stop_ids, stop_name_template,
-                          {5: "#FF0000", 10: "#FFFF00", 100000: "#00FF00"})
+    # init data providers
+    fetchers = load_fetchers(config)
+    getters = {}
+    for row_num, row_fetchers in fetchers:
+        row_getters = []
+        for fetcher in row_fetchers:
+            row_getters.extend(fetcher[1].get())
+        getters[row_num] = row_getters
 
+    # init font
     font_path = get_resource("helvR08.pil")
     font = ImageFont.load(font_path)
     font_y_offset = -2
 
-    display = displays[args.display](width * scale, height * scale)
+    # init displays
+    displays = load_displays(config)
+    display = displays[args.display]
 
-    getters = [fetcher.get(stop_id) for stop_id in fetcher.data]
-
+    # init tiles
     tile_padding = 10
+    tiles = []
+    for row_y in range(0, max(getters.keys()) + 1):
+        tiles.append([])
+        x = 0
+        if row_y not in getters or len(getters[row_y]) == 0:
+            continue
+        while x < width:
+            getter = getters[row_y].pop(0)
+            getters[row_y].append(getter)
+            tile = Tile(x, row_y * 17, getter, font, font_y_offset)
+            tiles[row_y].append(tile)
+            x += tile.width + tile_padding
 
-    tiles = [[]] * (height // 16)
-    x = 0
-    y = 0
-    next_data_index = 0
-    while x < width:
-        tile = Tile(x, y, getters[next_data_index], font, font_y_offset)
-        tiles[y].append(tile)
-        x += tile.width + tile_padding
-        next_data_index = (next_data_index + 1) % len(getters)
-
+    # main UI loop
     current_time = time.time()
     while True:
         previous_time = current_time
-        image = get_image(tiles, width, height).resize((width * scale, height * scale))
+        image = get_image(tiles, width, height)
         display.refresh(image)
 
-        for row in tiles:
+        for row_y, row in enumerate(tiles):
             tiles_to_remove = []
             row_len = len(row)
             for idx, tile in enumerate(row):
                 tile.x -= 1
                 if idx == row_len - 1 and tile.x + tile.width + tile_padding < width:
-                    new_tile = Tile(tile.x + tile.width + tile_padding, tile.y, getters[next_data_index], font, font_y_offset)
+                    getter = getters[row_y].pop(0)
+                    getters[row_y].append(getter)
+                    new_tile = Tile(tile.x + tile.width + tile_padding, row_y * 17, getter, font, font_y_offset)
                     row.append(new_tile)
-                    tile.add = True
-                    next_data_index = (next_data_index + 1) % len(getters)
                 if idx == 0 and tile.x + tile.width < 0:
                     tiles_to_remove.append(idx)
 
