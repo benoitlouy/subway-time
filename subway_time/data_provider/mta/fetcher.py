@@ -85,14 +85,6 @@ class Fetcher:
     def get(self, stop_id):
         return functools.partial(self.access, stop_id)
 
-    def max_width_text(self, stop_id):
-        label = str(ColorString(self.stop_name_template % self.data[stop_id]))
-        data = str(ColorString(self.time_separator)).join(["%02d min" % x for x in [0] * self.max_pred])
-        if len(label) > len(data):
-            return label
-        else:
-            return data
-
     @staticmethod
     def get_direction(ext):
         return {ext.NORTH: "North",
