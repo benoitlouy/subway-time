@@ -14,8 +14,9 @@ import collections
 
 
 class Fetcher:
-    def __init__(self, api_key, feed_ids, stop_ids, label_template, time_colors, time_separator="#6E6E6E{, }",
+    def __init__(self, id, api_key, feed_ids, stop_ids, label_template, time_colors, time_separator="#6E6E6E{, }",
                  max_pred=3, no_pred="#0000FF{No Predictions}"):
+        self.id = id
         self.api_key = api_key
         self.feed_ids = feed_ids
         self.stop_ids = stop_ids
@@ -83,7 +84,7 @@ class Fetcher:
                 ColorString(self.time_separator.join(times))]
 
     def get(self):
-        return [functools.partial(self.access, stop_id) for stop_id in self.stop_ids]
+        return [((self.id, stop_id), functools.partial(self.access, stop_id)) for stop_id in self.stop_ids]
 
     @staticmethod
     def get_direction(ext):

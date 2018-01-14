@@ -20,9 +20,15 @@ def get_image(tiles, width, height):
 
 
 def load_fetchers(config):
-    fetchers = [(fetcher_config["row"], importlib.import_module(fetcher_config["module"]).Fetcher(**fetcher_config["config"]))
+    fetchers = [(fetcher_config["row"], importlib.import_module(fetcher_config["module"]).Fetcher(fetcher_id, **fetcher_config["config"]))
                 for fetcher_id, fetcher_config in config["fetchers"].items()]
-    return groupby(fetchers, lambda x: x[0])
+    result = {}
+    for fetcher in fetchers:
+        row = result.get(fetcher[0], [])
+        result[fetcher[0]] = row
+        row.append(fetcher)
+    return result
+    # return dict(groupby(fetchers, lambda x: x[0]))
 
 
 def load_displays(config):
@@ -30,6 +36,28 @@ def load_displays(config):
     for display_id, display_config in config["displays"].items():
         displays[display_id] = importlib.import_module(display_config["module"]).Display(**display_config["config"])
     return displays
+
+def refresh_getters(fetchers, getters):
+    for row_num, row_fetchers in fetchers.items():
+        row_getters = getters.get(row_num, [])
+        getters[row_num] = row_getters
+        # removing old getters
+        to_remove = []
+        new_getters = []
+        for fetcher in row_fetchers:
+            new_getters.extend(fetcher[1].get())
+        updated_getters = dict(new_getters)
+        updated_getter_ids = updated_getters.keys()
+        for idx, row_getter in enumerate(row_getters):
+            if row_getter[0] not in updated_getter_ids:
+                to_remove.append(idx)
+        for offset, idx in enumerate(to_remove):
+            del row_getters[idx - offset]
+        # adding new getters
+        current_row_getters_id = [row_getter[0] for row_getter in row_getters]
+        for k, v in updated_getters.items():
+            if k not in current_row_getters_id:
+                row_getters.append((k, v))
 
 
 def main():
@@ -48,11 +76,12 @@ def main():
     # init data providers
     fetchers = load_fetchers(config)
     getters = {}
-    for row_num, row_fetchers in fetchers:
-        row_getters = []
-        for fetcher in row_fetchers:
-            row_getters.extend(fetcher[1].get())
-        getters[row_num] = row_getters
+    refresh_getters(fetchers, getters)
+    # for row_num, row_fetchers in fetchers:
+    #     row_getters = []
+    #     for fetcher in row_fetchers:
+    #         row_getters.extend(fetcher[1].get())
+    #     getters[row_num] = row_getters
 
     # init font
     font_path = get_resource("helvR08.pil")
@@ -74,7 +103,7 @@ def main():
         while x < width:
             getter = getters[row_y].pop(0)
             getters[row_y].append(getter)
-            tile = Tile(x, row_y * 17, getter, font, font_y_offset)
+            tile = Tile(x, row_y * 17, getter[1], font, font_y_offset)
             tiles[row_y].append(tile)
             x += tile.width + tile_padding
 
@@ -84,7 +113,7 @@ def main():
         previous_time = current_time
         image = get_image(tiles, width, height)
         display.refresh(image)
-
+        refresh_getters(fetchers, getters)
         for row_y, row in enumerate(tiles):
             tiles_to_remove = []
             row_len = len(row)
@@ -93,7 +122,7 @@ def main():
                 if idx == row_len - 1 and tile.x + tile.width + tile_padding < width:
                     getter = getters[row_y].pop(0)
                     getters[row_y].append(getter)
-                    new_tile = Tile(tile.x + tile.width + tile_padding, row_y * 17, getter, font, font_y_offset)
+                    new_tile = Tile(tile.x + tile.width + tile_padding, row_y * 17, getter[1], font, font_y_offset)
                     row.append(new_tile)
                 if idx == 0 and tile.x + tile.width < 0:
                     tiles_to_remove.append(idx)
