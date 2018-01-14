@@ -1,5 +1,5 @@
-from subway_time.utils import get_resource, minutes_to_text
-from subway_time.color_string import ColorString
+from matrix_display.utils import get_resource
+from matrix_display.color_string import ColorString
 import csv
 import datetime
 from google.transit import gtfs_realtime_pb2
@@ -13,7 +13,7 @@ import functools
 import collections
 
 
-class Fetcher:
+class DataProvider:
     def __init__(self, id, api_key, feed_ids, stop_ids, label_template, time_colors, time_separator="#6E6E6E{, }",
                  max_pred=3, no_pred="#0000FF{No Predictions}"):
         self.id = id
@@ -26,7 +26,7 @@ class Fetcher:
         self.max_pred = max_pred
         self.no_pred = no_pred
         self.init_data = {}
-        with open(get_resource("stops.csv"), "r") as csv_file:
+        with open(get_resource("stops.csv", __file__), "r") as csv_file:
             reader = csv.DictReader(csv_file)
             for row in reader:
                 if row['stop_id'] in self.stop_ids:
@@ -75,7 +75,7 @@ class Fetcher:
             for next_train in stop_data["next_train_times"]:
                 for t, tmpl in self.time_templates.items():
                     if next_train <= t:
-                        times.append(tmpl % minutes_to_text(next_train))
+                        times.append(tmpl % self.minutes_to_text(next_train))
                         break
                 if len(times) == self.max_pred:
                     break
@@ -85,6 +85,15 @@ class Fetcher:
 
     def get(self):
         return [((self.id, stop_id), functools.partial(self.access, stop_id)) for stop_id in self.stop_ids]
+
+    @staticmethod
+    def minutes_to_text(time):
+        if time == 0:
+            return "now"
+        else:
+            return "%s min" % time
+
+
 
     @staticmethod
     def get_direction(ext):

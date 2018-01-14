@@ -2,9 +2,9 @@ import time
 import argparse
 import sys
 import json
-from subway_time.utils import get_resource
+from .utils import get_resource
 from PIL import Image, ImageDraw, ImageFont
-from subway_time.tile import Tile
+from .tile import Tile
 import importlib
 from itertools import groupby
 
@@ -20,15 +20,14 @@ def get_image(tiles, width, height):
 
 
 def load_fetchers(config):
-    fetchers = [(fetcher_config["row"], importlib.import_module(fetcher_config["module"]).Fetcher(fetcher_id, **fetcher_config["config"]))
+    fetchers = [(fetcher_config["row"], importlib.import_module(fetcher_config["module"]).DataProvider(fetcher_id, **fetcher_config["config"]))
                 for fetcher_id, fetcher_config in config["fetchers"].items()]
     result = {}
-    for fetcher in fetchers:
-        row = result.get(fetcher[0], [])
-        result[fetcher[0]] = row
+    for fetcher_id, fetcher in fetchers:
+        row = result.get(fetcher_id, [])
+        result[fetcher_id] = row
         row.append(fetcher)
     return result
-    # return dict(groupby(fetchers, lambda x: x[0]))
 
 
 def load_displays(config):
@@ -45,7 +44,7 @@ def refresh_getters(fetchers, getters):
         to_remove = []
         new_getters = []
         for fetcher in row_fetchers:
-            new_getters.extend(fetcher[1].get())
+            new_getters.extend(fetcher.get())
         updated_getters = dict(new_getters)
         updated_getter_ids = updated_getters.keys()
         for idx, row_getter in enumerate(row_getters):
@@ -77,14 +76,9 @@ def main():
     fetchers = load_fetchers(config)
     getters = {}
     refresh_getters(fetchers, getters)
-    # for row_num, row_fetchers in fetchers:
-    #     row_getters = []
-    #     for fetcher in row_fetchers:
-    #         row_getters.extend(fetcher[1].get())
-    #     getters[row_num] = row_getters
 
     # init font
-    font_path = get_resource("helvR08.pil")
+    font_path = get_resource("helvR08.pil", __file__)
     font = ImageFont.load(font_path)
     font_y_offset = -2
 
