@@ -4,7 +4,7 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 setup(
-        name="subway-time",
+        name="matrix-display",
 
         version="1.0.0",
 
@@ -12,13 +12,12 @@ setup(
 
         packages = find_packages(exclude = ["contrib", "docs", "tests"]),
         
-        install_requires=["pillow", "requests", "gtfs-realtime-bindings", "PySDL2"],
+        install_requires=["pillow", "PySDL2"],
 
         python_requires=">=3",
 
         package_data = {
-            "subway_time": [
-                "stops.csv",
+            "matrix_display": [
                 "helvR08.pbm",
                 "helvR08.pil"
                 ]
@@ -26,7 +25,7 @@ setup(
 
         entry_points={
             "console_scripts": [
-                "subway-time=subway_time.__main__:main"
+                "matrix-display=matrix_display.__main__:main"
             ]
         }
 )
