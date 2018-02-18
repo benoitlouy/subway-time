@@ -17,7 +17,8 @@ class DataProvider:
     def access(self):
         now = datetime.datetime.now()
         if self.time_zone:
-            now = now.astimezone(self.time_zone)
+            now = self.time_zone.localize(now)
+            # now = now.astimezone(self.time_zone)
         return [ColorString(now.strftime(self.date_format)), ColorString(now.strftime(self.time_format))]
 
     def get(self):
