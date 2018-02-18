@@ -28,5 +28,5 @@ class Tile:
             for token in line.tokens:
                 text = token.text
                 color = token.color
-                draw.text((x, self.y + self.font_y_offset + 8 * idx), text, font=self.font, fill=color)
+                draw.text((x, self.y + self.font_y_offset + 7 * idx), text, font=self.font, fill=color)
                 x += self.font.getsize(text)[0]
