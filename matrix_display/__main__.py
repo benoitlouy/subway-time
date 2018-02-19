@@ -60,17 +60,19 @@ def refresh_getters(fetchers, getters):
 
 
 def main():
-    fps = 10
     width = 64
     height = 32
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--config", "-c", required=True)
     arg_parser.add_argument("--display", "-d", default="sdl")
+    arg_parser.add_argument("--fps", "-f", type=int, default=20)
     args = arg_parser.parse_args()
 
     with open(args.config, 'r') as config_file:
         config = json.load(config_file)
+
+    fps = args.fps
 
     # init data providers
     fetchers = load_fetchers(config)
@@ -128,6 +130,7 @@ def main():
         time_delta = (1.0 / fps) - (current_time - previous_time)
         if time_delta > 0.0:
             time.sleep(time_delta)
+        current_time = time.time()
 
 
 if __name__ == "__main__":

@@ -60,9 +60,11 @@ class DataProvider:
                                 train_time = update.departure.time
                             train_time = datetime.datetime.fromtimestamp(train_time)
                             train_time = math.trunc(((train_time - current_time).total_seconds()) / 60)
-                            times = stop_info[update.stop_id].get("next_train_times", [])
-                            times.append(train_time)
-                            stop_info[update.stop_id]["next_train_times"] = times
+                            if train_time >= 0:
+                                times = stop_info[update.stop_id].get("next_train_times", [])
+                                times.append(train_time)
+                                times.sort()
+                                stop_info[update.stop_id]["next_train_times"] = times
 
         self.data = stop_info
 

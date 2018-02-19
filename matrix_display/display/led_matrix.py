@@ -10,4 +10,4 @@ class Display:
         self.matrix = RGBMatrix(options = options)
 
     def refresh(self, image):
-        self.matrix.SetImage(image.convert('RGB'))
+        self.matrix.SetImage(image)
