@@ -9,6 +9,7 @@ import math
 import copy
 import time
 import threading
+import multiprocessing
 import functools
 import collections
 
@@ -31,15 +32,22 @@ class DataProvider:
             for row in reader:
                 if row['stop_id'] in self.stop_ids:
                     self.init_data[row['stop_id']] = {"name": row['stop_name']}
-        self.data = self.init_data
-        self.fetch()
-        t = threading.Thread(target=self.loop, daemon=True)
+        self.data = self.fetch()
+        self.q = multiprocessing.Queue()
+        m = multiprocessing.Process(target=self.loop_external, daemon=True, args=(self.q,))
+        m.start()
+        t = threading.Thread(target=self.loop_internal, daemon=True)
         t.start()
 
-    def loop(self):
+    def loop_external(self, q):
         while True:
             time.sleep(60)
-            self.fetch()
+            data = self.fetch()
+            q.put(data)
+
+    def loop_internal(self):
+        while True:
+            self.data = self.q.get()
 
     def fetch(self):
         stop_info = copy.deepcopy(self.init_data)
@@ -65,8 +73,8 @@ class DataProvider:
                                 times.append(train_time)
                                 times.sort()
                                 stop_info[update.stop_id]["next_train_times"] = times
+        return stop_info
 
-        self.data = stop_info
 
     def access(self, stop_id):
         stop_data = self.data[stop_id]
