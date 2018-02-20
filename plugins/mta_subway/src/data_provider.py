@@ -31,7 +31,7 @@ class DataProvider:
             reader = csv.DictReader(csv_file)
             for row in reader:
                 if row['stop_id'] in self.stop_ids:
-                    self.init_data[row['stop_id']] = {"name": row['stop_name']}
+                    self.init_data[row['stop_id']] = {"name": row['stop_name'], "next_train_times": []}
         self.data = self.fetch()
         self.q = multiprocessing.Queue()
         m = multiprocessing.Process(target=self.loop_external, daemon=True, args=(self.q,))
